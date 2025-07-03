@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal HLS Stream Player</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.10/hls.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 1000px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .url-input-section {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .url-input-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .url-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            min-width: 300px;
+            transition: all 0.3s ease;
+        }
+        
+        .url-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+        
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .preset-btn {
+            background: linear-gradient(45deg, #50a3a2, #53e3a6);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .video-container {
+            position: relative;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+            max-height: 500px;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            color: #666;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            color: #d32f2f;
+            border: 1px solid rgba(255, 0, 0, 0.3);
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.1);
+            color: #388e3c;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+        
+        .warning {
+            background: rgba(255, 165, 0, 0.1);
+            color: #f57c00;
+            border: 1px solid rgba(255, 165, 0, 0.3);
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-panel {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .info-panel h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .info-panel p {
+            margin: 5px 0;
+            color: #666;
+        }
+        
+        .url-history {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: left;
+        }
+        
+        .history-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #ddd;
+        }
+        
+        .history-item:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+        }
+        
+        .history-item small {
+            color: #666;
+            display: block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Universal HLS Stream Player</h1>
+        
+        <div class="url-input-section">
+            <h3>🔗 Enter Stream URL</h3>
+            <div class="input-group">
+                <input type="text" id="streamUrl" class="url-input" 
+                       placeholder="https://example.com/stream.m3u8" 
+                       value="https://tataplay.slivcdn.com/hls/live/2020591/TEN3HD/master_3500.m3u8">
+                <button onclick="loadStreamFromInput()">🚀 Load Stream</button>
+            </div>
+            
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="loadPreset('https://tataplay.slivcdn.com/hls/live/2020591/TEN3HD/master_3500.m3u8')">Tata Play Sports</button>
+                <button class="preset-btn" onclick="loadPreset('https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8')">Test Stream</button>
+                <button class="preset-btn" onclick="loadPreset('https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8')">Demo Video</button>
+            </div>
+        </div>
+        
+        <div class="video-container">
+            <video id="video" controls muted></video>
+        </div>
+        
+        <div class="controls">
+            <button onclick="playVideo()">▶️ Play</button>
+            <button onclick="pauseVideo()">⏸️ Pause</button>
+            <button onclick="toggleMute()">🔊 Toggle Mute</button>
+            <button onclick="toggleFullscreen()">🔍 Fullscreen</button>
+            <button onclick="reloadStream()">🔄 Reload</button>
+            <button onclick="clearHistory()">🗑️ Clear History</button>
+        </div>
+        
+        <div id="status" class="status">
+            Ready to load stream. Enter a URL above and click "Load Stream".
+        </div>
+        
+        <div class="info-panel">
+            <h3>📊 Stream Information</h3>
+            <p><strong>Current URL:</strong> <span id="currentUrl">None</span></p>
+            <p><strong>Proxy URL:</strong> <span id="proxyUrl">None</span></p>
+            <p><strong>Protocol:</strong> HLS (HTTP Live Streaming)</p>
+            <p><strong>Status:</strong> <span id="streamStatus">Not loaded</span></p>
+            <p><strong>Quality:</strong> <span id="streamQuality">Auto</span></p>
+            <p><strong>Duration:</strong> <span id="streamDuration">Unknown</span></p>
+        </div>
+        
+        <div class="url-history">
+            <h3>📚 Recently Used URLs</h3>
+            <div id="historyList">
+                <p>No history yet. Load some streams to see them here.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const statusDiv = document.getElementById('status');
+        const streamStatus = document.getElementById('streamStatus');
+        const streamQuality = document.getElementById('streamQuality');
+        const streamDuration = document.getElementById('streamDuration');
+        const currentUrl = document.getElementById('currentUrl');
+        const proxyUrl = document.getElementById('proxyUrl');
+        const streamUrlInput = document.getElementById('streamUrl');
+        const historyList = document.getElementById('historyList');
+        
+        let hls;
+        let urlHistory = JSON.parse(localStorage.getItem('streamHistory') || '[]');
+        
+        function updateStatus(message, type = 'info') {
+            statusDiv.innerHTML = `${getCurrentTime()} - ${message}`;
+            statusDiv.className = `status ${type}`;
+            
+            // Auto-scroll to bottom
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+        
+        function getCurrentTime() {
+            return new Date().toLocaleTimeString();
+        }
+        
+        function addToHistory(url) {
+            const historyItem = {
+                url: url,
+                timestamp: new Date().toISOString(),
+                title: extractTitle(url)
+            };
+            
+            // Remove duplicates
+            urlHistory = urlHistory.filter(item => item.url !== url);
+            
+            // Add to beginning
+            urlHistory.unshift(historyItem);
+            
+            // Keep only last 10 items
+            urlHistory = urlHistory.slice(0, 10);
+            
+            // Save to localStorage
+            localStorage.setItem('streamHistory', JSON.stringify(urlHistory));
+            
+            updateHistoryDisplay();
+        }
+        
+        function extractTitle(url) {
+            try {
+                const urlObj = new URL(url);
+                const pathname = urlObj.pathname;
+                const filename = pathname.split('/').pop();
+                return filename || urlObj.hostname;
+            } catch (e) {
+                return url.substring(0, 50) + '...';
+            }
+        }
+        
+        function updateHistoryDisplay() {
+            if (urlHistory.length === 0) {
+                historyList.innerHTML = '<p>No history yet. Load some streams to see them here.</p>';
+                return;
+            }
+            
+            historyList.innerHTML = urlHistory.map(item => `
+                <div class="history-item" onclick="loadFromHistory('${item.url}')">
+                    <strong>${item.title}</strong>
+                    <small>${item.url}</small>
+                    <small>Used: ${new Date(item.timestamp).toLocaleString()}</small>
+                </div>
+            `).join('');
+        }
+        
+        function loadFromHistory(url) {
+            streamUrlInput.value = url;
+            loadStreamFromInput();
+        }
+        
+        function loadPreset(url) {
+            streamUrlInput.value = url;
+            loadStreamFromInput();
+        }
+        
+        function clearHistory() {
+            urlHistory = [];
+            localStorage.removeItem('streamHistory');
+            updateHistoryDisplay();
+            updateStatus('🗑️ History cleared', 'success');
+        }
+        
+        function loadStreamFromInput() {
+            const url = streamUrlInput.value.trim();
+            if (!url) {
+                updateStatus('❌ Please enter a valid stream URL', 'error');
+                return;
+            }
+            
+            loadStream(url);
+        }
+        
+        function loadStream(originalUrl) {
+            updateStatus('🔄 Loading stream...', 'info');
+            streamStatus.textContent = 'Loading...';
+            
+            // Create proxy URL
+            const proxyStreamUrl = `/proxy?url=${encodeURIComponent(originalUrl)}`;
+            
+            // Update info panel
+            currentUrl.textContent = originalUrl;
+            proxyUrl.textContent = proxyStreamUrl;
+            
+            // Add to history
+            addToHistory(originalUrl);
+            
+            if (Hls.isSupported()) {
+                if (hls) {
+                    hls.destroy();
+                }
+                
+                hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90,
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60
+                });
+                
+                hls.loadSource(proxyStreamUrl);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    updateStatus('✅ Stream loaded successfully! Ready to play.', 'success');
+                    streamStatus.textContent = 'Loaded';
+                    streamQuality.textContent = `${hls.levels.length} quality levels available`;
+                    console.log('HLS manifest parsed, levels:', hls.levels);
+                });
+                
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS Error:', data);
+                    updateStatus(`❌ HLS Error: ${data.details || data.type}`, 'error');
+                    streamStatus.textContent = 'Error';
+                    
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                updateStatus('❌ Network error. Check URL and connection. Retrying...', 'error');
+                                setTimeout(() => hls.startLoad(), 2000);
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                updateStatus('❌ Media error. Attempting recovery...', 'error');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                updateStatus('❌ Fatal error. Try a different stream URL.', 'error');
+                                hls.destroy();
+                                break;
+                        }
+                    }
+                });
+                
+                hls.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {
+                    const level = hls.levels[data.level];
+                    streamQuality.textContent = `${level.width}x${level.height} @ ${Math.round(level.bitrate/1000)}kbps`;
+                });
+                
+                hls.on(Hls.Events.FRAG_LOADED, function(event, data) {
+                    updateStatus(`📡 Loaded segment: ${data.frag.sn}`, 'info');
+                });
+                
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari)
+                video.src = proxyStreamUrl;
+                updateStatus('✅ Using native HLS support (Safari)', 'success');
+                streamStatus.textContent = 'Native HLS';
+            } else {
+                updateStatus('❌ HLS not supported in this browser. Try Chrome, Firefox, or Safari.', 'error');
+                streamStatus.textContent = 'Not supported';
+            }
+        }
+        
+        function playVideo() {
+            video.play().then(() => {
+                updateStatus('▶️ Playing stream', 'success');
+            }).catch(err => {
+                updateStatus(`❌ Play error: ${err.message}`, 'error');
+            });
+        }
+        
+        function pauseVideo() {
+            video.pause();
+            updateStatus('⏸️ Stream paused', 'info');
+        }
+        
+        function toggleMute() {
+            video.muted = !video.muted;
+            updateStatus(`🔊 Audio ${video.muted ? 'muted' : 'unmuted'}`, 'info');
+        }
+        
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                video.requestFullscreen().catch(err => {
+                    updateStatus(`❌ Fullscreen error: ${err.message}`, 'error');
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        function reloadStream() {
+            const url = streamUrlInput.value.trim();
+            if (url) {
+                updateStatus('🔄 Reloading stream...', 'warning');
+                loadStream(url);
+            } else {
+                updateStatus('❌ No URL to reload', 'error');
+            }
+        }
+        
+        // Video event listeners
+        video.addEventListener('loadstart', () => updateStatus('📡 Video loading started...', 'info'));
+        video.addEventListener('canplay', () => updateStatus('✅ Video ready to play', 'success'));
+        video.addEventListener('playing', () => updateStatus('▶️ Video playing', 'success'));
+        video.addEventListener('pause', () => updateStatus('⏸️ Video paused', 'info'));
+        video.addEventListener('ended', () => updateStatus('🏁 Video ended', 'info'));
+        video.addEventListener('error', (e) => {
+            updateStatus(`❌ Video error: ${e.message || 'Unknown error'}`, 'error');
+        });
+        
+        video.addEventListener('loadedmetadata', () => {
+            if (video.duration) {
+                const duration = Math.round(video.duration);
+                const hours = Math.floor(duration / 3600);
+                const minutes = Math.floor((duration % 3600) / 60);
+                const seconds = duration % 60;
+                
+                if (hours > 0) {
+                    streamDuration.textContent = `${hours}h ${minutes}m ${seconds}s`;
+                } else {
+                    streamDuration.textContent = `${minutes}m ${seconds}s`;
+                }
+            } else {
+                streamDuration.textContent = 'Live Stream';
+            }
+        });
+        
+        // Enter key support for URL input
+        streamUrlInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loadStreamFromInput();
+            }
+        });
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            updateHistoryDisplay();
+            updateStatus('🎬 Universal HLS Player ready! Enter a stream URL above.', 'success');
+        });
+    </script>
+</body>
+</html>
